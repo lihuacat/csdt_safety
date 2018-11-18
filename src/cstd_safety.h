@@ -31,7 +31,7 @@ typedef struct CSTD_safety_gas_leak  CSTD_safety_gas_leak_t;
 //气体的泄漏系数 end
 
 //标准大气压
-#define CSTD_safety_atmos (double)101325.00
+#define CSTD_safety_atmos (double)101300.00
 
 enum
 {
@@ -262,6 +262,6 @@ int CSTD_safety_lpress_vessel_explo_calc(CSTD_safety_lpress_vessel_explo_t *pres
 //盛装液化气体容器爆破模型计算
 int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lgpress_vessel_explo_t *press_explo );
 //盛装饱和水容器爆破模型计算
-int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t *press_explo )；
+int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t *press_explo );
 #endif
 

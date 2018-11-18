@@ -145,7 +145,7 @@ int CSTD_safety_liquid_leak_calc(CSTD_safety_liquid_leak_t *liquid_leak)
     double ret = 0.0;
     double ret1 = 0.0;
 
-    if(liquid_leak->pressure==0.0||liquid_leak->density)
+    if(liquid_leak->pressure==0.0||liquid_leak->density == 0)
     {
         return CSTD_safety_err_zero_divide;
     }
@@ -154,7 +154,7 @@ int CSTD_safety_liquid_leak_calc(CSTD_safety_liquid_leak_t *liquid_leak)
     ret1 = 2*(liquid_leak->pressure-CSTD_safety_atmos)/liquid_leak->pressure+2*9.8*liquid_leak->height_diff;
     liquid_leak->leak_rate = ret1*pow(ret1,0.5);
 
-    ret1 = pow(2*liquid_leak->pressure/liquid_leak->density+2*9.8*liquid_leak->height_diff,0.5) - (liquid_leak->pressure*9.8*liquid_leak->vessel_CSA)*liquid_leak->leak_time;
+    ret1 = pow(2*liquid_leak->pressure/liquid_leak->density+2*9.8*liquid_leak->height_diff,0.5) - (liquid_leak->density*9.8*liquid_leak->gap_area*liquid_leak->gap_area)*liquid_leak->leak_time;
     liquid_leak->instantaneous_rate = ret*ret1;
 
     return CSTD_safety_err_noerror;
@@ -279,7 +279,7 @@ int CSTD_safety_jet_fire_calc( CSTD_safety_jet_fire_t *jet_fire )
 
     //计算死亡半径
     index = (5.0+37.23)/2.56;
-    left_data = pow(E_value,left_data);
+    left_data = pow(E_value,index);
     left_data = pow(left_data/jet_fire->combustion_dur,0.75);
     ret = 0.2*5*0.35*jet_fire->gas_leak.leak_rate*jet_fire->combustion_heat;
     ret1 = 4*pi*left_data;
@@ -299,7 +299,7 @@ int CSTD_safety_jet_fire_calc( CSTD_safety_jet_fire_t *jet_fire )
     left_data = pow(left_data/jet_fire->combustion_dur,0.75);
     ret = 0.2*5*0.35*jet_fire->gas_leak.leak_rate*jet_fire->combustion_heat;
     ret1 = 4*pi*left_data;
-    jet_fire->serious_injury_r = pow(ret/ret1,0.5);
+    jet_fire->slight_injury_r = pow(ret/ret1,0.5);
 
     //计算财产损失半径
     left_data = 6730*pow(jet_fire->combustion_dur,-0.8) + 25400;
@@ -475,10 +475,11 @@ int CSTD_safety_vcloud_explo_calc( CSTD_safety_vcloud_explo_t *vcloud_explosion)
 
     //计算重伤半径
     deta_p = 44000/CSTD_safety_atmos;
+    // deta_p = 44000.0;
     deta_r = r = vcloud_explosion->death_r;
     do{
-        Z = r/pow( vcloud_explosion->explosion_energy/CSTD_safety_atmos, 0.333333 );
-        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
+        Z = r/pow( vcloud_explosion->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
+        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269*pow(Z,-1) - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
         {
@@ -506,10 +507,11 @@ int CSTD_safety_vcloud_explo_calc( CSTD_safety_vcloud_explo_t *vcloud_explosion)
 
     //计算轻伤半径
     deta_p = 17000/CSTD_safety_atmos;
+    // deta_p = 17000;
     deta_r = r = vcloud_explosion->serious_injury_r;
     do{
-        Z = r/pow( vcloud_explosion->explosion_energy/CSTD_safety_atmos, 0.333333 );
-        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
+        Z = r/pow( vcloud_explosion->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
+        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269*pow(Z,-1) - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
         {
@@ -535,7 +537,7 @@ int CSTD_safety_vcloud_explo_calc( CSTD_safety_vcloud_explo_t *vcloud_explosion)
         cmp_ret1 = cmp_ret;
     }while(1);
 
-    vcloud_explosion->property_damage_r = explosion_damage_level[vcloud_explosion->property_damage_level]*pow(vcloud_explosion->TNT_equivalent,0.333333)/pow(1+((3175*3175)/(vcloud_explosion->TNT_equivalent*vcloud_explosion->TNT_equivalent)),1/6);
+    vcloud_explosion->property_damage_r = explosion_damage_level[vcloud_explosion->property_damage_level]*pow(vcloud_explosion->TNT_equivalent,0.333333)/pow(1+( pow(3175/vcloud_explosion->TNT_equivalent,2) ), 1/6);
 
     return 0;
 }
@@ -566,7 +568,7 @@ int CSTD_safety_explosive_explo_calc(CSTD_safety_explosive_explo_t *explosive_ex
     deta_p = 44000/CSTD_safety_atmos;
     deta_r = r = explosive_explo->death_r;
     do{
-        Z = r/pow( explosive_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( explosive_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -597,7 +599,7 @@ int CSTD_safety_explosive_explo_calc(CSTD_safety_explosive_explo_t *explosive_ex
     deta_p = 17000/CSTD_safety_atmos;
     deta_r = r = explosive_explo->serious_injury_r;
     do{
-        Z = r/pow( explosive_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( explosive_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -633,6 +635,13 @@ int CSTD_safety_gpress_vessel_explo_calc(CSTD_safety_gpress_vessel_explo_t *pres
 {
     double index = 0.0;
     double ret = 0.0;
+    double r = 0.0;
+    double Z = 0.0;
+    double q_r = 0.0;
+    double deta_p = 0.0;
+    double deta_r = 0.0;
+    int cmp_ret = 0;
+    int cmp_ret1 = 0;
 
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
@@ -655,8 +664,9 @@ int CSTD_safety_gpress_vessel_explo_calc(CSTD_safety_gpress_vessel_explo_t *pres
     //计算重伤半径
     deta_p = 44000/CSTD_safety_atmos;
     deta_r = r = press_explo->death_r;
+    
     do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -687,88 +697,7 @@ int CSTD_safety_gpress_vessel_explo_calc(CSTD_safety_gpress_vessel_explo_t *pres
     deta_p = 17000/CSTD_safety_atmos;
     deta_r = r = press_explo->serious_injury_r;
     do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
-        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
-        cmp_ret=double_cmp(&q_r,&deta_p);
-        if(cmp_ret==0)
-        {
-            press_explo->slight_injury_r = r;
-            break;
-        }
-        else if(cmp_ret>0)
-        {
-            if( cmp_ret>0 && cmp_ret1<0 )
-            {
-                deta_r = deta_r/2;
-            }
-            r+=deta_r;
-        }
-        else
-        {
-            if( cmp_ret1>0 && cmp_ret<0 )
-            {
-                deta_r = deta_r/2;
-            }
-            r-=deta_r;
-        }
-        cmp_ret1 = cmp_ret;
-    }while(1);
-
-    press_explo->property_damage_r = explosion_damage_level[press_explo->property_damage_level]*pow(press_explo->TNT_equivalent,0.333333)/pow(1+((3175*3175)/(press_explo->TNT_equivalent*press_explo->TNT_equivalent)),1/6);
-
-    return CSTD_safety_err_noerror
-}
-
-int CSTD_safety_lpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *press_explo )
-{
-    if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
-    {
-        printf("property_damage_level illegal.\n");
-        return CSTD_safety_err_para_error;
-    }
-
-    press_explo->explosion_energy = pow(press_explo->abs_press-0.1013,2)*press_explo->volume*press_explo->compress_coeff*50000;
-
-    press_explo->TNT_equivalent = press_explo->explosion_energy/4520.0;
-
-    //死亡半径
-    press_explo->death_r = 13.6*pow(press_explo->TNT_equivalent/1000.0,0.37);
-    //计算重伤半径
-    deta_p = 44000/CSTD_safety_atmos;
-    deta_r = r = press_explo->death_r;
-    do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
-        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
-        cmp_ret=double_cmp(&q_r,&deta_p);
-        if(cmp_ret==0)
-        {
-            press_explo->serious_injury_r = r;
-            break;
-        }
-        else if(cmp_ret>0)
-        {
-            if( cmp_ret>0 && cmp_ret1<0 )
-            {
-                deta_r = deta_r/2;
-            }
-            r+=deta_r;
-        }
-        else
-        {
-            if( cmp_ret1>0 && cmp_ret<0 )
-            {
-                deta_r = deta_r/2;
-            }
-            r-=deta_r;
-        }
-        cmp_ret1 = cmp_ret;
-    }while(1);
-
-    //计算轻伤半径
-    deta_p = 17000/CSTD_safety_atmos;
-    deta_r = r = press_explo->serious_injury_r;
-    do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -800,15 +729,23 @@ int CSTD_safety_lpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *pre
     return CSTD_safety_err_noerror;
 }
 
-int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *press_explo )
+int CSTD_safety_lpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *press_explo )
 {
+    double r = 0.0;
+    double Z = 0.0;
+    double q_r = 0.0;
+    double deta_p = 0.0;
+    double deta_r = 0.0;
+    int cmp_ret = 0;
+    int cmp_ret1 = 0;
+
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
         printf("property_damage_level illegal.\n");
         return CSTD_safety_err_para_error;
     }
 
-    press_explo->explosion_energy = ( (press_explo->ethalpy-press_explo->normal_ethalpy)-(press_explo->ehtropy-press_explo->normal_ehtropy)*press_explo->boiling_point)*press_explo->mass;
+    press_explo->explosion_energy = pow(press_explo->abs_press-0.1013,2)*press_explo->volume*press_explo->compress_coeff*50000;
 
     press_explo->TNT_equivalent = press_explo->explosion_energy/4520.0;
 
@@ -818,7 +755,7 @@ int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *pr
     deta_p = 44000/CSTD_safety_atmos;
     deta_r = r = press_explo->death_r;
     do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -849,7 +786,96 @@ int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *pr
     deta_p = 17000/CSTD_safety_atmos;
     deta_r = r = press_explo->serious_injury_r;
     do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
+        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
+        cmp_ret=double_cmp(&q_r,&deta_p);
+        if(cmp_ret==0)
+        {
+            press_explo->slight_injury_r = r;
+            break;
+        }
+        else if(cmp_ret>0)
+        {
+            if( cmp_ret>0 && cmp_ret1<0 )
+            {
+                deta_r = deta_r/2;
+            }
+            r+=deta_r;
+        }
+        else
+        {
+            if( cmp_ret1>0 && cmp_ret<0 )
+            {
+                deta_r = deta_r/2;
+            }
+            r-=deta_r;
+        }
+        cmp_ret1 = cmp_ret;
+    }while(1);
+
+    press_explo->property_damage_r = explosion_damage_level[press_explo->property_damage_level]*pow(press_explo->TNT_equivalent,0.333333)/pow(1+((3175*3175)/(press_explo->TNT_equivalent*press_explo->TNT_equivalent)),1/6);
+
+    return CSTD_safety_err_noerror;
+}
+
+int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lgpress_vessel_explo_t *press_explo )
+{
+    double r = 0.0;
+    double Z = 0.0;
+    double q_r = 0.0;
+    double deta_p = 0.0;
+    double deta_r = 0.0;
+    int cmp_ret = 0;
+    int cmp_ret1 = 0;
+
+    if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
+    {
+        printf("property_damage_level illegal.\n");
+        return CSTD_safety_err_para_error;
+    }
+
+    press_explo->explosion_energy = ( (press_explo->ethalpy-press_explo->normal_ethalpy)-(press_explo->ehtropy-press_explo->normal_ehtropy)*press_explo->boiling_point)*press_explo->mass;
+
+    press_explo->TNT_equivalent = press_explo->explosion_energy/4520.0;
+
+    //死亡半径
+    press_explo->death_r = 13.6*pow(press_explo->TNT_equivalent/1000.0,0.37);
+    //计算重伤半径
+    deta_p = 44000/CSTD_safety_atmos;
+    deta_r = r = press_explo->death_r;
+    do{
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
+        q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
+        cmp_ret=double_cmp(&q_r,&deta_p);
+        if(cmp_ret==0)
+        {
+            press_explo->serious_injury_r = r;
+            break;
+        }
+        else if(cmp_ret>0)
+        {
+            if( cmp_ret>0 && cmp_ret1<0 )
+            {
+                deta_r = deta_r/2;
+            }
+            r+=deta_r;
+        }
+        else
+        {
+            if( cmp_ret1>0 && cmp_ret<0 )
+            {
+                deta_r = deta_r/2;
+            }
+            r-=deta_r;
+        }
+        cmp_ret1 = cmp_ret;
+    }while(1);
+
+    //计算轻伤半径
+    deta_p = 17000/CSTD_safety_atmos;
+    deta_r = r = press_explo->serious_injury_r;
+    do{
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -883,6 +909,14 @@ int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *pr
 
 int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t *press_explo )
 {
+    double r = 0.0;
+    double Z = 0.0;
+    double q_r = 0.0;
+    double deta_p = 0.0;
+    double deta_r = 0.0;
+    int cmp_ret = 0;
+    int cmp_ret1 = 0;
+
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
         printf("property_damage_level illegal.\n");
@@ -899,7 +933,7 @@ int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t 
     deta_p = 44000/CSTD_safety_atmos;
     deta_r = r = press_explo->death_r;
     do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
@@ -930,7 +964,7 @@ int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t 
     deta_p = 17000/CSTD_safety_atmos;
     deta_r = r = press_explo->serious_injury_r;
     do{
-        Z = r/pow( press_explo->explosion_energy/CSTD_safety_atmos, 0.333333 );
+        Z = r/pow( press_explo->explosion_energy*1000/CSTD_safety_atmos, 0.333333 );
         q_r = 0.137*pow(Z,-3) + 0.119*pow(Z,-2) + 0.269/Z - 0.019;
         cmp_ret=double_cmp(&q_r,&deta_p);
         if(cmp_ret==0)
