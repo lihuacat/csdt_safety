@@ -1,4 +1,15 @@
 #include <stdio.h>
+#include <sys/ioctl.h>
+#include <linux/hdreg.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include<ctype.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+#include <openssl/bio.h>
 
 #include "cstd_safety.h"
 
@@ -7,6 +18,16 @@
 int main(int argc, char** argv)
 {
     int ret = 0;
+    char buf[256] = {0};
+    char en_str[1024] = {0};
+    char de_str[1024] = {0};
+
+    //授权认证
+    ret = CSTD_authorize("host_key");
+    if (ret!=0) {
+        LOG_DEBUG("CSTD_authorize failed.");
+        return -1;
+    }
     CSTD_safety_gas_leak_t gas_leak;
     gas_leak.gap_area=0.000078;
     gas_leak.gas_temperature = 10;
@@ -177,3 +198,8 @@ int main(int argc, char** argv)
 
     return 0;
 }
+
+
+
+
+

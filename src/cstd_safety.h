@@ -6,6 +6,7 @@ enum
     CSTD_safety_err_noerror = 0,
     CSTD_safety_err_zero_divide = -1,
     CSTD_safety_err_para_error = -2,
+    CSTD_safety_err_no_auth = -3,
 };
 
 //气体泄漏模型
@@ -263,5 +264,10 @@ int CSTD_safety_lpress_vessel_explo_calc(CSTD_safety_lpress_vessel_explo_t *pres
 int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lgpress_vessel_explo_t *press_explo );
 //盛装饱和水容器爆破模型计算
 int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t *press_explo );
+
+// 授权算法库的使用， file_name：key文件名
+//返回值：0 成功，-1 授权认证失败
+int CSTD_authorize(const char *file_name);
+
 #endif
 

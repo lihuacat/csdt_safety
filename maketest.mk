@@ -14,17 +14,17 @@ OBJS += $(SRCDIR)/cstd_test.o
 
 LIBDIR := -L ./lib
 
-LIBS := -lm
+LIBS := -lm -lssl -lcrypto
 LIBS += -lcstd_safety
 
 # CFLAGS := $(INCLUDE) $(LIBDIR) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden
-CFLAGS := $(INCLUDE) $(LIBDIR) $(LIBS) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden 
-
+# CFLAGS := $(INCLUDE) $(LIBDIR) $(LIBS) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden 
+CFLAGS := $(INCLUDE) $(LIBDIR) $(LIBS) -Wall -g
 TARGETS := cstd_test
 
 $(TARGETS) : ${OBJS}
 	$(CC) $(CFLAGS)  -o $@ ${OBJS} $(LIBS) 
-	$(STRIP) $(TARGETS) 
+	# $(STRIP) $(TARGETS) 
 
 clean:
 	@find . -name "*.o"  | xargs rm -f

@@ -1,5 +1,16 @@
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <linux/hdreg.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include<ctype.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "verify.h"
+
 #include "cstd_safety.h"
 
 #define LOG_DEBUG(format,arg...) printf("%s,%d:"format"\n",__FILE__,__LINE__,##arg);
@@ -14,6 +25,7 @@ static const double E_value = 2.718281;
 static const double pi = 3.14;
 static const double air_density = 3.14;
 static const double g_value = 9.8;
+static int verified = 0;
 
 //计算至死亡热通量
 static inline double calc_death_combustion_heat( double combustion_dur)
@@ -86,6 +98,8 @@ int CSTD_safety_gas_leak_calc(CSTD_safety_gas_leak_t *gas_leak)
     double Y1 = 0.0;
     int ret2 = 0;
 
+    if (!verified) return CSTD_safety_err_no_auth;
+
     if( 0.0 == gas_leak->const_vol_spec_heat || 0.0 == gas_leak->vessel_pressure )
     {
         return CSTD_safety_err_zero_divide;
@@ -145,6 +159,8 @@ int CSTD_safety_liquid_leak_calc(CSTD_safety_liquid_leak_t *liquid_leak)
     double ret = 0.0;
     double ret1 = 0.0;
 
+    if (!verified) return CSTD_safety_err_no_auth;
+
     if(liquid_leak->pressure==0.0||liquid_leak->density == 0)
     {
         return CSTD_safety_err_zero_divide;
@@ -168,6 +184,8 @@ int CSTD_safety_solid_fire_calc(CSTD_safety_solid_fire_t *solid_fire)
     double ret = 0.0;
     double ret1 = 0.0;
     
+    if (!verified) return CSTD_safety_err_no_auth;
+
     if( 0.0 == solid_fire->combustion_rate )
         return CSTD_safety_err_zero_divide;
     burn_time = solid_fire->mass/solid_fire->combustion_rate;
@@ -215,6 +233,8 @@ int CSTD_safety_pool_fire_calc(CSTD_safety_pool_fire_t *pool_fire)
     double index = 0.0;
     double left_data = 0.0;
     double burn_dur = 0.0;
+
+    if (!verified) return CSTD_safety_err_no_auth;
 
     if(pool_fire->combustion_rate == 0.0 )
     {
@@ -271,6 +291,8 @@ int CSTD_safety_jet_fire_calc( CSTD_safety_jet_fire_t *jet_fire )
     double ret1 = 0.0;
     double index = 0.0;
 
+    if (!verified) return CSTD_safety_err_no_auth;
+
     jet_fire->gas_leak.leak_coeff = 1.0;
     jet_fire->gas_leak.gap_area = pi*pow(jet_fire->diameter,2.0)/4.0;
 
@@ -321,6 +343,8 @@ int CSTD_safety_BLEVE_fire_calc(CSTD_safety_BLEVE_fire_t *BLEVE_fire)
     double combustion_heat = 0.0;
     int cmp_ret=0;
     int cmp_ret1=0;
+
+    if (!verified) return CSTD_safety_err_no_auth;
 
     BLEVE_fire->fireball_r = 2.0*pow(BLEVE_fire->mass,0.3333);
     BLEVE_fire->combustion_dur = 0.45*pow(BLEVE_fire->mass,0.3333);
@@ -463,6 +487,8 @@ int CSTD_safety_vcloud_explo_calc( CSTD_safety_vcloud_explo_t *vcloud_explosion)
     int cmp_ret=0;
     int cmp_ret1=0;
 
+    if (!verified) return CSTD_safety_err_no_auth;
+
     if (vcloud_explosion->property_damage_level>5 || vcloud_explosion->property_damage_level<1 )
     {
         printf("property_damage_level illegal.\n");
@@ -551,6 +577,8 @@ int CSTD_safety_explosive_explo_calc(CSTD_safety_explosive_explo_t *explosive_ex
     double r = 0.0;
     int cmp_ret=0;
     int cmp_ret1=0;
+
+    if (!verified) return CSTD_safety_err_no_auth;
 
     if (explosive_explo->property_damage_level>5 || explosive_explo->property_damage_level<1 )
     {
@@ -642,6 +670,8 @@ int CSTD_safety_gpress_vessel_explo_calc(CSTD_safety_gpress_vessel_explo_t *pres
     double deta_r = 0.0;
     int cmp_ret = 0;
     int cmp_ret1 = 0;
+
+    if (!verified) return CSTD_safety_err_no_auth;
 
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
@@ -739,6 +769,8 @@ int CSTD_safety_lpress_vessel_explo_calc( CSTD_safety_lpress_vessel_explo_t *pre
     int cmp_ret = 0;
     int cmp_ret1 = 0;
 
+    if (!verified) return CSTD_safety_err_no_auth;
+
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
         printf("property_damage_level illegal.\n");
@@ -827,6 +859,8 @@ int CSTD_safety_lgpress_vessel_explo_calc( CSTD_safety_lgpress_vessel_explo_t *p
     double deta_r = 0.0;
     int cmp_ret = 0;
     int cmp_ret1 = 0;
+
+    if (!verified) return CSTD_safety_err_no_auth;
 
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
@@ -917,6 +951,8 @@ int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t 
     int cmp_ret = 0;
     int cmp_ret1 = 0;
 
+    if (!verified) return CSTD_safety_err_no_auth;
+
     if (press_explo->property_damage_level>5 || press_explo->property_damage_level<1 )
     {
         printf("property_damage_level illegal.\n");
@@ -995,3 +1031,15 @@ int CSTD_safety_satwater_vessel_explo_calc( CSTD_safety_satwater_vessel_explo_t 
 
     return CSTD_safety_err_noerror;
 }
+
+int CSTD_authorize(const char *file_name)
+{
+    if( verify_auth(file_name) == 0)
+    {
+        verified = 1;
+        return 0;
+    }
+
+    return CSTD_safety_err_no_auth;
+}
+
