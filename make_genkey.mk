@@ -7,14 +7,10 @@ STRIP=$(CROSS_COMPILE)strip
 
 ROOTDIR := .
 SRCDIR := $(ROOTDIR)/src
-INCLUDE := -I $(ROOTDIR)/src
-INCLUDE += -I $(ROOTDIR)/src/verify
-INCLUDE += -I $(ROOTDIR)/src/log
 
 OBJS := $(SRCDIR)/cstd_genkey.o
-OBJS += $(SRCDIR)/verify/verify.o
 
-LIBS :=-lcrypto -lssl 
+# LIBS :=-Wl,-Bstatic -lcrypto -lssl -Wl,-Bdynamic -lpthread -ldl
 
 CFLAGS := $(INCLUDE) $(LIBDIR) $(LIBS) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden 
 # CFLAGS := $(INCLUDE) $(LIBDIR) $(LIBS) -Wall -g

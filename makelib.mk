@@ -16,7 +16,8 @@ SRCS := $(SRCDIR)/cstd_safety.c
 OBJS := $(SRCDIR)/cstd_safety.o
 OBJS += $(SRCDIR)/verify/verify.o
 
-LIBS := -lm -lcrypto -lssl 
+LIBS := -Wl,-Bstatic -lcrypto -lssl  -Wl,-Bdynamic -lm -lpthread
+# LIBS := -lm -static libcrypto.a -static libssl.a
 
 # CFLAGS := $(INCLUDE) $(LIBDIR) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden
 CFLAGS := $(INCLUDE) $(LIBDIR) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fPIC
