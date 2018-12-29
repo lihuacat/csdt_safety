@@ -2,14 +2,43 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
+#include <openssl/md5.h>
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdbool.h>
+
+#include "log.h"
+#include "verify.h"
+
+#ifndef WIN32 
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#else
 
-#include "log.h"
+#include <winsock2.h>
+#include <Iphlpapi.h>
+
+#pragma warning(disable : 4996)
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "Ws2_32.lib")
+// #pragma comment(lib, "D:\\Program Files\\OpenSSL-Win64\\lib\\libcrypto.lib")
+// #pragma comment(lib, "D:\\Program Files\\OpenSSL-Win64\\lib\\libssl.lib")
+#endif 
+
+#ifdef _cplusplus
+extern "C"{
+#endif
+static int get_mac(char *mac); //获取本机MAC地址 
+size_t Base64_encode(const char* input, int length, bool with_new_line, char* ret_buf);
+size_t Base64_decode(char* input, int length, bool with_new_line, char* ret_buf);
+static void byte2hex(unsigned char bData,unsigned char hex[]);
 
 static const unsigned char public_key2[]="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv/aLRjWYuTN0VXE9Hkwg\n";
 static const unsigned char public_key7[]="umJitLQ9PDhEh8W0GNHXELf9H3JzQN5SQAN8Dca87bLO4WLzaZWQXsO5pd2VEETW\n";
@@ -61,7 +90,7 @@ static RSA* create_RSA(const unsigned char* key, int flag)
 	keybio = BIO_new_mem_buf(key, -1);
  
 	if (keybio==NULL) {
-		printf( "Failed to create key BIO");
+		printf( "Failed to create key BIO\n");
 		return 0;
 	}
  
@@ -71,7 +100,7 @@ static RSA* create_RSA(const unsigned char* key, int flag)
 		rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
  
 	if(rsa == NULL)
-		printf( "Failed to create RSA");
+		printf( "Failed to create RSA\n");
     BIO_free(keybio);
 	return rsa;
 }
@@ -108,6 +137,7 @@ static int public_decrypt(unsigned char* enc_data, int data_len, unsigned char* 
 	return result;
 }
 
+#if 0
 static int exec_cmd(const char* cmd, char *ret, int size)
 {
     int iret = 0;
@@ -122,29 +152,132 @@ static int exec_cmd(const char* cmd, char *ret, int size)
 
     return iret;
 }
+#endif
+
+// #ifndef WIN32 
+/*
+int verify_get_host_ID(char* id, int size)
+{
+    char mac[1024]={0};
+    exec_cmd("ifconfig | grep HWaddr | awk '{print $5}'",id,1023);
+    if(strlen(mac)>2)
+    {
+        return exec_cmd("ifconfig | grep HWaddr | awk '{print $5}'|md5sum|awk '{print $1}'|base64",id,size);
+    }
+    else
+    {
+        return exec_cmd("ifconfig | grep ether | awk '{print $2}'|md5sum|awk '{print $1}'|base64",id,size);
+    }
+    
+} */
+// #else
+
+static char *md5(const char* src, int size, char* dst)
+{
+    unsigned char md5[20];
+    MD5((unsigned char *)src, size, md5);
+    int i;
+    for(i=0;i<15;i++)
+    {
+        byte2hex(md5[i], (unsigned char*)&dst[2*i]);
+    }
+
+    return dst;
+}
 
 int verify_get_host_ID(char* id, int size)
 {
-    return exec_cmd("ifconfig | grep HWaddr | awk '{print $5}'|md5sum|awk '{print $1}'|base64",id,size);
+    char mac[1024]={0};
+    char mac_md5[20]={0};
+
+    get_mac(mac);
+    // LOG_DEBUG("mac:%s",mac)
+    md5(mac, strlen(mac), mac_md5);
+    // LOG_DEBUG("mac_md5:%s",mac_md5);
+    return Base64_encode( mac_md5, strlen(mac_md5), 0, id );
 }
+// #endif 
+
+#ifdef WIN32
+int verify_auth(const char* file_name)
+{
+    int len = 0;
+	FILE* fd = NULL;
+
+	fopen_s(&fd, file_name, "r");
+	if(fd==NULL) {
+		printf("open %s error.\n", file_name);
+		return -1;
+	}
+    char host_key[1024] = {0};
+    char de_str[1024] = {0};
+    unsigned char* key = NULL;
+    int ret = -1;
+    char public_key[1024]={0};
+
+    if (fread(&len, sizeof(int), 1, fd)<0) {
+        LOG_ERROR("read error:%d,%s",errno,strerror(errno));
+        ret = -1;
+        goto END;
+    }
+    if (len <= 0) {
+        LOG_ERROR("len error.");
+        ret = -1;
+        goto END;
+    }
+    key = (unsigned char*)calloc(1, len);
+    if (key == NULL) {
+        LOG_ERROR("calloc error.");
+        ret = -1;
+        goto END;
+    }
+
+    if (fread( key, len, 1, fd) < 0) {
+
+        LOG_ERROR("read error:%d,%s",errno,strerror(errno));
+        ret = -1;
+        goto END;
+    }
+    sprintf(public_key,"%s%s%s%s%s%s%s%s%s",public_key1,public_key2,public_key3,public_key4,public_key5,public_key6,public_key7,public_key8,public_key9);
+    if (public_decrypt(key,len,(unsigned char*)public_key,(unsigned char*)de_str) < 0) {
+        
+        LOG_ERROR("public_decrypt error.");
+        ret = -1;
+        goto END;
+    }
+    verify_get_host_ID(host_key,sizeof(host_key));
+    LOG_ERROR("host_key:%s",host_key);
+    LOG_ERROR("de_str:%s",de_str);
+    if (memcmp(host_key,de_str,strlen(host_key)) == 0) {
+        ret = 0;
+    }
+
+END:
+    if(key!=NULL) free(key);
+    fclose(fd);
+    return ret;
+
+}
+#else
 
 int verify_auth(const char* file_name)
 {
     int len = 0;
-    int fd = open(file_name,O_RDONLY);
+	int fd = 0;
     char host_key[1024] = {0};
     char de_str[1024] = {0};
     unsigned char* key = NULL;
-    int ret = 0;
+    int ret = -1;
     char public_key[1024]={0};
 
+    fd = open(file_name,O_RDONLY);
     if( fd < 0 )
     {
         LOG_ERROR("open error:%d,%s",errno,strerror(errno));
         ret = -1;
         goto END;
     }
-    if (read(fd,&len,sizeof(int))<0) {
+    if (read(fd, &len, sizeof(int))<0) {
         LOG_ERROR("read error:%d,%s",errno,strerror(errno));
         ret = -1;
         goto END;
@@ -175,6 +308,8 @@ int verify_auth(const char* file_name)
         goto END;
     }
     verify_get_host_ID(host_key,sizeof(host_key));
+    // LOG_ERROR("host_key:%s",host_key);
+    // LOG_ERROR("de_str:%s",de_str);
     if (memcmp(host_key,de_str,strlen(host_key)) == 0) {
         ret = 0;
     }
@@ -185,3 +320,165 @@ END:
     return ret;
 
 }
+#endif
+
+static void byte2hex(unsigned char bData,unsigned char hex[])
+{
+	int high=bData/16,low =bData %16;
+	hex[0] = (high <10)?('0'+high):('a'+high-10);
+    hex[1] = (low <10)?('0'+low):('a'+low-10);
+}
+
+#ifdef WIN32
+static int get_mac(char *mac) //获取本机MAC地址 
+{
+    ULONG ulSize=0;
+    PIP_ADAPTER_INFO pInfo=NULL;
+    int temp=0;
+    temp = GetAdaptersInfo(pInfo,&ulSize);//第一次调用，获取缓冲区大小
+    pInfo=(PIP_ADAPTER_INFO)malloc(ulSize);
+    temp = GetAdaptersInfo(pInfo,&ulSize);
+
+    int iCount=0;
+    while(pInfo)//遍历每一张网卡
+    {
+        //  pInfo->Address 是MAC地址
+        for(int i=0;i<(int)pInfo->AddressLength;i++)
+        {
+            byte2hex((unsigned char)pInfo->Address[i],&mac[iCount]);
+            iCount+=2;
+            if(i<(int)pInfo->AddressLength-1)
+            {
+                mac[iCount++] = ':';
+            }else
+            {
+                mac[iCount++] = ';';
+            }
+        }
+        pInfo = pInfo->Next;
+    }
+
+    if(iCount >0)
+    {
+        mac[--iCount]='\0';
+        return iCount;
+    }
+    else return -1;
+}
+
+#else
+
+static int get_mac(char* mac)
+{
+    int fd = 0;
+    struct ifreq buf[16];
+    struct ifconf ifc;
+    // struct ifreq ifrcopy;
+    char mac_addr[20] = {0};
+
+    ifc.ifc_len = sizeof(buf);
+    ifc.ifc_buf = (caddr_t)buf;
+    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+        perror("socket");
+        close(fd);
+        return -1;
+    }
+
+    if ( ioctl(fd, SIOCGIFCONF, (char *)&ifc) < 0 )
+    {
+        LOG_ERROR("ioctl error:%d,%s", errno, strerror(errno));
+        return -1;
+    }
+    int interfaceNum = ifc.ifc_len / sizeof(struct ifreq);
+    // LOG_DEBUG("interfaceNum:%d",interfaceNum);
+    for (; interfaceNum > 0; interfaceNum--)
+    {
+        // LOG_DEBUG("ndevice name: %s", buf[interfaceNum].ifr_name);
+        if( ioctl(fd, SIOCGIFHWADDR, (char *)(&buf[interfaceNum]) ) < 0 )
+        {
+            // LOG_ERROR("ioctl error:%d,%s", errno, strerror(errno));
+            // return -1;
+            continue;
+        }
+        memset(mac_addr, 0, sizeof(mac_addr));
+        sprintf(mac_addr, "%02x:%02x:%02x:%02x:%02x:%02x",(unsigned char)buf[interfaceNum].ifr_hwaddr.sa_data[0],(unsigned char)buf[interfaceNum].ifr_hwaddr.sa_data[1], (unsigned char)buf[interfaceNum].ifr_hwaddr.sa_data[2],(unsigned char)buf[interfaceNum].ifr_hwaddr.sa_data[3],(unsigned char)buf[interfaceNum].ifr_hwaddr.sa_data[4], (unsigned char)buf[interfaceNum].ifr_hwaddr.sa_data[5]);
+        // LOG_DEBUG("mac_addr:%s",mac_addr);
+        strcat(mac,mac_addr);
+        strcat(mac,";");
+    }
+    close(fd);
+    fd = strlen(mac);
+    if(fd>0)
+    {
+        mac[fd-1]=0;
+    }
+
+    return fd;
+}
+
+#endif
+
+
+
+#if 0
+int main(int argc, char* argv[])
+{
+    char address[1024];
+    if(get_mac(address)>0)
+    {
+        printf("MAC-%s\n",address);
+    }else
+    {
+        printf("invoke getMAC error!\n");
+    }
+    return 0;
+}
+#endif
+
+size_t Base64_encode(const char* input, int length, bool with_new_line, char* ret_buf)
+{
+	BIO * bmem = NULL;
+	BIO * b64 = NULL;
+	BUF_MEM * bptr = NULL;
+    size_t ret_len = 0;
+ 
+	b64 = BIO_new(BIO_f_base64());
+	if(!with_new_line) {
+		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+	}
+	bmem = BIO_new(BIO_s_mem());
+	b64 = BIO_push(b64, bmem);
+	BIO_write(b64, input, length);
+	BIO_flush(b64);
+	BIO_get_mem_ptr(b64, &bptr);
+    
+	memcpy(ret_buf, bptr->data, bptr->length);
+    ret_len = bptr->length;
+	BIO_free_all(b64);
+ 
+	return ret_len;
+}
+
+size_t Base64_decode(char* input, int length, bool with_new_line, char* ret_buf)
+{
+	BIO * b64 = NULL;
+	BIO * bmem = NULL;
+    int ret = 0;
+ 
+	b64 = BIO_new(BIO_f_base64());
+	if(!with_new_line) {
+		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+	}
+	bmem = BIO_new_mem_buf(input, length);
+	bmem = BIO_push(b64, bmem);
+	ret = BIO_read(bmem, ret_buf, length);
+ 
+	BIO_free_all(bmem);
+ 
+	return ret;
+}
+
+#ifdef _cplusplus
+}
+#endif

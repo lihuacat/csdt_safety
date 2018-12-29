@@ -1,0 +1,7 @@
+﻿  stdafx.cpp
+  cstd_genkey.cpp
+  正在生成代码...
+cstd_genkey.obj : error LNK2019: 无法解析的外部符号 "int __cdecl verify_get_host_ID(char *,int)" (?verify_get_host_ID@@YAHPADH@Z)，该符号在函数 _main 中被引用
+D:\Program Files\OpenSSL-Win64\lib\libssl.lib : warning LNK4272: 库计算机类型“x64”与目标计算机类型“X86”冲突
+D:\Program Files\OpenSSL-Win64\lib\libcrypto.lib : warning LNK4272: 库计算机类型“x64”与目标计算机类型“X86”冲突
+c:\users\jin\documents\visual studio 2015\Projects\cstd_genkey\Debug\cstd_genkey.exe : fatal error LNK1120: 1 个无法解析的外部命令
