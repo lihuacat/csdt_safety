@@ -12,10 +12,10 @@ INCLUDE := -I $(ROOTDIR)/src
 
 OBJS += $(SRCDIR)/cstd_test.o
 
-LIBDIR := -L ./lib
+# LIBDIR := -L ./lib
 
-LIBS := -lm -lssl -lcrypto
-LIBS += -lcstd_safety
+# LIBS := -lm 
+LIBS := -lcstd_safety
 
 # CFLAGS := $(INCLUDE) $(LIBDIR) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden
 # CFLAGS := $(INCLUDE) $(LIBDIR) $(LIBS) -Wall -O2 -ffunction-sections -fdata-sections -Wl,-Map=object.map,--cref,--gc-section -fvisibility=hidden 
