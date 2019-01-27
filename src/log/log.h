@@ -7,8 +7,8 @@
 #define LOG_ERROR(format,arg...) printf("%s,%d:"format"\n",__FILE__,__LINE__,##arg);
 // #define LOG_ERROR(format,arg...) printf(format"\n",##arg);
 #else
-#define LOG_DEBUG printf
-#define LOG_ERROR printf
+#define LOG_DEBUG printf("\n");printf
+#define LOG_ERROR printf("\n");printf
 #endif
 
 #endif

@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <openssl/err.h>
 
 #include "log.h"
 #include "verify.h"
@@ -81,7 +82,11 @@ static const unsigned char private_key[] = "-----BEGIN RSA PRIVATE KEY-----\n"\
 "-----END RSA PRIVATE KEY-----";
 */
 
+#ifdef WIN32
+const static int padding = RSA_NO_PADDING;
+#else
 const static int padding = RSA_PKCS1_PADDING;
+#endif
 
 static RSA* create_RSA(const unsigned char* key, int flag)
 {
@@ -124,7 +129,13 @@ static int private_decrypt(unsigned char* enc_data, int data_len, unsigned char*
 int private_encrypt(unsigned char* data, int data_len, unsigned char* key, unsigned char* encrypted)
 {
 	RSA * rsa = create_RSA(key, 0);
+    char err_str[512]={0};
 	int result = RSA_private_encrypt(data_len, data, encrypted, rsa, padding);
+    if( result < 0 )
+    {
+         LOG_ERROR( "openSSL error:%s\n", ERR_error_string(ERR_get_error(),err_str) );
+
+    }
     RSA_free(rsa);
 	return result;
 }
@@ -132,7 +143,13 @@ int private_encrypt(unsigned char* data, int data_len, unsigned char* key, unsig
 static int public_decrypt(unsigned char* enc_data, int data_len, unsigned char* key, unsigned char* decrypted)
 {
 	RSA * rsa = create_RSA(key, 1);
+    char err_str[512]={0};
 	int  result = RSA_public_decrypt(data_len, enc_data, decrypted, rsa, padding);
+    if( result < 0 )
+    {
+         LOG_ERROR( "openSSL error:%s\n", ERR_error_string(ERR_get_error(),err_str) );
+
+    }
     RSA_free(rsa);
 	return result;
 }
@@ -246,8 +263,6 @@ int verify_auth(const char* file_name)
         goto END;
     }
     verify_get_host_ID(host_key,sizeof(host_key));
-    LOG_ERROR("host_key:%s",host_key);
-    LOG_ERROR("de_str:%s",de_str);
     if (memcmp(host_key,de_str,strlen(host_key)) == 0) {
         ret = 0;
     }
