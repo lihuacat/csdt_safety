@@ -221,7 +221,7 @@ int verify_auth(const char* file_name)
     int len = 0;
 	FILE* fd = NULL;
 
-	fopen_s(&fd, file_name, "r");
+	fopen_s(&fd, file_name, "rb");
 	if(fd==NULL) {
 		printf("open %s error.\n", file_name);
 		return -1;
@@ -230,43 +230,111 @@ int verify_auth(const char* file_name)
     char de_str[1024] = {0};
     unsigned char* key = NULL;
     int ret = -1;
+	int ret1 = 0;
     char public_key[1024]={0};
 
-    if (fread(&len, sizeof(int), 1, fd)<0) {
-        LOG_ERROR("read error:%d,%s",errno,strerror(errno));
-        ret = -1;
-        goto END;
-    }
-    if (len <= 0) {
-        LOG_ERROR("len error.");
-        ret = -1;
-        goto END;
-    }
-    key = (unsigned char*)calloc(1, len);
-    if (key == NULL) {
-        LOG_ERROR("calloc error.");
-        ret = -1;
-        goto END;
-    }
-
-    if (fread( key, len, 1, fd) < 0) {
-
-        LOG_ERROR("read error:%d,%s",errno,strerror(errno));
-        ret = -1;
-        goto END;
-    }
+	memset(public_key, 0x00, sizeof(public_key));
     sprintf(public_key,"%s%s%s%s%s%s%s%s%s",public_key1,public_key2,public_key3,public_key4,public_key5,public_key6,public_key7,public_key8,public_key9);
-    if (public_decrypt(key,len,(unsigned char*)public_key,(unsigned char*)de_str) < 0) {
-        
-        LOG_ERROR("public_decrypt error.");
-        ret = -1;
-        goto END;
-    }
-    verify_get_host_ID(host_key,sizeof(host_key));
-    if (memcmp(host_key,de_str,strlen(host_key)) == 0) {
-        ret = 0;
-    }
+	verify_get_host_ID(host_key, sizeof(host_key));
+	
+	/*
+	ret1 = fread_s(&len, sizeof(int), sizeof(int), 1, fd);
+	if (ret1 <= 0) {
+		LOG_ERROR("read len error:%d,%s", errno, strerror(errno));
+		ret = -1;
+		goto END;
+	}
+	if (len <= 0) {
+		LOG_ERROR("len error.");
+		ret = -1;
+		goto END;
+	}
+	//LOG_ERROR("len=%d", len);
+	key = (unsigned char*)calloc(1, len);
+	if (key == NULL) {
+		LOG_ERROR("calloc error.");
+		ret = -1;
+		goto END;
+	}
+	memset(key, 0x00, len);
+	ret1 = fread_s(key, len, len, 1, fd);
+	if (ret1 <= 0) {
 
+		LOG_ERROR("read key error:%d,%s", errno, strerror(errno));
+		ret = -1;
+		goto END;
+	}
+	//LOG_ERROR("ret1=%d", ret1);
+	memset(de_str, 0x00, sizeof(de_str));
+	if (memcmp(host_key, de_str, strlen(host_key)) == 0) {
+		//LOG_ERROR("host_key:%s", host_key);
+		//LOG_ERROR("de_str:%s", de_str);
+		//LOG_ERROR("i=%d", i);
+		ret = 0;
+		goto END;
+	}
+	else {
+		LOG_ERROR("host_key:%s", host_key);
+		LOG_ERROR("de_str:%s", de_str);
+		//LOG_ERROR("i=%d", i);
+	}
+	*/
+	
+	int i = strlen(host_key);
+	for (; i >= 0; i--)
+	{
+		ret1 = fread_s(&len,sizeof(int), sizeof(int), 1, fd);
+		if ( ret1<= 0) {
+			LOG_ERROR("read len error:%d,%s", errno, strerror(errno));
+			ret = -1;
+			goto END;
+		}
+		if (len <= 0) {
+			LOG_ERROR("len error.");
+			ret = -1;
+			goto END;
+		}
+		//LOG_ERROR("len=%d", len);
+		key = (unsigned char*)calloc(1, len);
+		if (key == NULL) {
+			LOG_ERROR("calloc error.");
+			ret = -1;
+			goto END;
+		}
+		memset(key, 0x00, len);
+		ret1 = fread_s(key, len, len, 1, fd);
+		if ( ret1 <= 0) {
+
+			LOG_ERROR("read key error:%d,%s", errno, strerror(errno));
+			ret = -1;
+			goto END;
+		}
+		//LOG_ERROR("ret1=%d", ret1);
+		memset(de_str, 0x00, sizeof(de_str));
+		if (public_decrypt(key, len, (unsigned char*)public_key, (unsigned char*)de_str) < 0) {
+
+			LOG_ERROR("public_decrypt error.");
+			ret = -1;
+			goto END;
+		}
+		
+		if (memcmp(host_key, de_str, strlen(host_key)) == 0) {
+			//LOG_ERROR("host_key:%s", host_key);
+			//LOG_ERROR("de_str:%s", de_str);
+			//LOG_ERROR("i=%d", i);
+			ret = 0;
+			goto END;
+		}
+		else {
+			LOG_ERROR("host_key:%s", host_key);
+			LOG_ERROR("de_str:%s", de_str);
+			LOG_ERROR("i=%d", i);
+		}
+		free(key);
+		key = NULL;
+	}
+	
+	
 END:
     if(key!=NULL) free(key);
     fclose(fd);
