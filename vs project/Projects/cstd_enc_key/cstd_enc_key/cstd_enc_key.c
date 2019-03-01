@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 {
 	int ret = 0;
 	unsigned char ret_buf[2048] = { 0 };
-	unsigned char src_str[260] = { '1' };
+	unsigned char src_str[256] = { 0 };
 
 	if (argc != 3)
 	{
@@ -46,28 +46,65 @@ int main(int argc, char** argv)
 		return 0;
 	}
 	
+	//printf("src_str:[%s]\n", src_str);
+	//printf("argv[1]:[%s]\n", argv[1]);
+	memset(src_str, '1', sizeof(src_str));
 	memcpy(src_str, argv[1], strlen(argv[1]));
+	memcpy(src_str+ strlen(argv[1]), argv[1], strlen(argv[1]));
+	
+	FILE* fd = fopen(argv[2], "wb");
+	if (fd == NULL) {
+		printf("creat %s failed.%s\n", argv[2], strerror(errno));
+		return -1;
+	}
+
+	/*
+	memset(ret_buf, 0x00, sizeof(ret_buf));
 	ret = private_encrypt(src_str, 256, private_key, ret_buf);
-	if (ret<0)
+	if (ret < 0)
 	{
 		printf("encrypt failed.\n");
 		return -1;
 	}
-	FILE* fd = fopen(argv[2], "w");
-	if (fd==NULL) {
-		printf("creat %s failed.%s\n", argv[2], strerror(errno));
-		return -1;
-	}
-	if (fwrite( &ret, sizeof(ret), 1, fd ) < 0) {
-		printf("fwrite %s failed.%s\n", argv[2], strerror(errno));
-		goto end;
-	}
+	//printf("ret:[%d]\n", ret);
 	
-	if (fwrite( ret_buf, 1, ret, fd) < 0) {
+	if (fwrite(&ret, sizeof(ret), 1, fd) < 0) {
 		printf("fwrite %s failed.%s\n", argv[2], strerror(errno));
 		goto end;
 	}
 
+	if (fwrite(ret_buf, 1, ret, fd) < 0) {
+		printf("fwrite %s failed.%s\n", argv[2], strerror(errno));
+		goto end;
+	}
+	*/
+	
+	int i = strlen(argv[1]);
+	for (; i >= 0 ; i--)
+	{
+		src_str[strlen(argv[1])+i] = '1';
+		//printf("src_str:[%s]\n", src_str);
+		memset(ret_buf, 0x00, sizeof(ret_buf));
+		ret = private_encrypt(src_str, 256, private_key, ret_buf);
+		if (ret < 0)
+		{
+			printf("encrypt failed.\n");
+			return -1;
+		}
+		//printf("ret:[%d]\n", ret);
+
+		if (fwrite(&ret, sizeof(ret), 1, fd) < 0) {
+			printf("fwrite %s failed.%s\n", argv[2], strerror(errno));
+			goto end;
+		}
+
+		if (fwrite(ret_buf, 1, ret, fd) < 0) {
+			printf("fwrite %s failed.%s\n", argv[2], strerror(errno));
+			goto end;
+		}
+	}
+	
+	
 end:
 	fclose(fd);
 	return 0;
